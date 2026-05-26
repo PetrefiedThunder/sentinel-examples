@@ -1,0 +1,15 @@
+{
+  "name": "sentinel-langchain-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node agent.mjs"
+  },
+  "dependencies": {
+    "@langchain/core": "^0.3.0",
+    "@langchain/openai": "^0.3.0",
+    "langchain": "^0.3.0",
+    "sentinel-oversight": "^0.1.0",
+    "zod": "^3.23.0"
+  }
+}
