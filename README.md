@@ -8,6 +8,7 @@ Pick an example and follow its README — each one is self-contained.
 |---|---|---|
 | **[`python-demo`](#python-demo-the-60-second-recording)** | Python | Wire-transfer function gated by `@oversight`. The 60-sec demo video script. |
 | **[`langchain-js`](./langchain-js)** | TypeScript / Node + LangChain.js | Real agent calling two tools — `check_balance` (free) and `wire_transfer` (gated). Allowlist approval. |
+| **[`langgraph-py`](./langgraph-py)** | Python + LangGraph | Same two-tool agent in Python — `wire_transfer` gated via `SentinelToolGate.wrap()`. Allowlist approval. |
 | **[`webhooks-receiver`](./webhooks-receiver)** | Node (zero deps) | Receive Sentinel approval webhooks and verify the HMAC signature. Production checklist + Express + FastAPI equivalents. |
 
 Need an API key first? https://app.pauseapi.app/signup — free tier, no card.
