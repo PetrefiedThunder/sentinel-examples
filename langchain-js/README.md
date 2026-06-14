@@ -9,6 +9,17 @@ The point: **you allowlist which tools require approval**, the rest run normally
 
 ## Run
 
+> **Note:** This example depends on the Sentinel JS SDK (`sentinel-oversight`),
+> which is **coming soon to npm**. Until it's published, `npm install` will 404
+> on that package. To run the example today, install the SDK from git, e.g.:
+>
+> ```bash
+> npm install github:PetrefiedThunder/sentinel-oversight-js
+> ```
+>
+> (or point the `sentinel-oversight` dependency in `package.json` at your local
+> checkout). Once the package is on npm, `npm install` will just work.
+
 ```bash
 export SENTINEL_API_KEY=sk_live_...   # from https://app.pauseapi.app/signup
 export OPENAI_API_KEY=sk-...

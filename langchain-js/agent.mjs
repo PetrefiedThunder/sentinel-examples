@@ -22,7 +22,7 @@
 
 import { ChatOpenAI } from '@langchain/openai';
 import { tool } from '@langchain/core/tools';
-import { createReactAgent } from 'langchain/agents';
+import { createReactAgent } from '@langchain/langgraph/prebuilt';
 import { configure } from 'sentinel-oversight';
 import { SentinelCallbackHandler } from 'sentinel-oversight/langchain';
 import { z } from 'zod';
