@@ -1,0 +1,10 @@
+# gitleaks config for sentinel-examples
+# Extends the built-in default ruleset so all upstream secret detectors apply.
+title = "sentinel-examples gitleaks config"
+
+[extend]
+useDefault = true
+
+# No allowlist entries: examples must contain no real secrets or PII.
+# If a placeholder ever trips a rule, add a narrowly-scoped regex here with a
+# comment explaining why it is safe — do not broadly disable rules.
