@@ -14,8 +14,8 @@ fi
 source .venv/bin/activate
 pip install -q --upgrade pip sentinel-oversight
 
-# api key from the shared file
-export SENTINEL_API_KEY="$(grep API_KEY ../.api-key.env | cut -d= -f2)"
+# api key — must be set in the environment before running
+: "${SENTINEL_API_KEY:?Set SENTINEL_API_KEY before running}"
 
 clear
 echo

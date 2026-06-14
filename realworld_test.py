@@ -1,5 +1,5 @@
 """
-Real-world scenario tests for Sentinel SDK 0.1.7.
+Real-world scenario tests for Sentinel SDK 0.1.9.
 
 Each test runs the actual SDK against the production API at api.pauseapi.app,
 auto-approving (or auto-rejecting) via direct REST calls so we can exercise
@@ -45,8 +45,9 @@ def auto_decide(decision: str, delay: float = 1.0):
         for _ in range(20):
             r = http.get("/v1/approvals", params={"limit": 5})
             r.raise_for_status()
-            data = r.json()
-            pending = [a for a in data if a.get("decision") == "pending"]
+            resp = r.json()
+            items = resp["data"] if isinstance(resp, dict) and "data" in resp else resp
+            pending = [a for a in items if a.get("decision") == "pending"]
             if pending:
                 action_id = pending[0]["action_id"]
                 http.post(
@@ -172,7 +173,9 @@ def auto_approve_all():
     while not stop_flag.is_set():
         try:
             r = http.get("/v1/approvals", params={"limit": 20})
-            for a in r.json():
+            resp = r.json()
+            items = resp["data"] if isinstance(resp, dict) and "data" in resp else resp
+            for a in items:
                 if a.get("decision") == "pending":
                     http.post(
                         f"/v1/approvals/{a['action_id']}/decision",

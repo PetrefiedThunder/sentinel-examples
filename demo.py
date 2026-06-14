@@ -6,7 +6,7 @@ Run:   python demo.py
 What happens:
   1. AI agent decides to wire $50,000.
   2. Sentinel pauses execution.
-  3. You get an email at 1@christophersellers.com.
+  3. You get an email at you@example.com.
   4. Click Approve in the email.
   5. The function unblocks and "runs".
 
