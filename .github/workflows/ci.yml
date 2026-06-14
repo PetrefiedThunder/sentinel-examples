@@ -1,0 +1,161 @@
+name: CI
+
+# Per-example smoke checks + secret scan.
+# These run WITHOUT a live SENTINEL_API_KEY and WITHOUT the unpublished
+# `sentinel-oversight` package, so they validate that examples are not broken
+# (syntax, parse-ability, manifests) rather than executing them end-to-end.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: Python examples (compile + requirements)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Byte-compile every Python file
+        # Catches syntax errors / broken imports-at-module-level without
+        # executing the examples (they need a live SENTINEL_API_KEY).
+        run: |
+          mapfile -t PYFILES < <(git ls-files '*.py')
+          echo "Compiling: ${PYFILES[*]}"
+          python -m py_compile "${PYFILES[@]}"
+
+      - name: Validate requirements files parse
+        # Do NOT install: requirements depend on the unpublished
+        # `sentinel-oversight` package and would 404 on a real install.
+        # We only confirm each requirements file is well-formed and pins
+        # parse cleanly via packaging.
+        run: |
+          python -m pip install --quiet packaging
+          shopt -s globstar nullglob
+          found=0
+          for req in **/requirements*.txt; do
+            found=1
+            echo "::group::$req"
+            python - "$req" <<'PY'
+          import sys
+          from packaging.requirements import Requirement, InvalidRequirement
+          path = sys.argv[1]
+          errors = []
+          with open(path) as fh:
+              for lineno, raw in enumerate(fh, 1):
+                  line = raw.split('#', 1)[0].strip()
+                  if not line or line.startswith('-'):
+                      continue
+                  try:
+                      Requirement(line)
+                  except InvalidRequirement as exc:
+                      errors.append(f"{path}:{lineno}: {line!r}: {exc}")
+          if errors:
+              print("\n".join(errors))
+              sys.exit(1)
+          print(f"OK: {path}")
+          PY
+            echo "::endgroup::"
+          done
+          if [ "$found" = 0 ]; then
+            echo "No requirements*.txt files found (nothing to validate)."
+          fi
+
+  javascript:
+    name: JS examples (syntax + manifest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Syntax-check every JS/MJS file
+        run: |
+          mapfile -t JSFILES < <(git ls-files '*.mjs' '*.js' | grep -v node_modules || true)
+          if [ "${#JSFILES[@]}" -eq 0 ]; then
+            echo "No JS files found."
+            exit 0
+          fi
+          for f in "${JSFILES[@]}"; do
+            echo "node --check $f"
+            node --check "$f"
+          done
+
+      - name: Validate every package.json is valid JSON
+        # python3 is preinstalled on ubuntu-latest runners; json.tool exits
+        # non-zero on malformed JSON.
+        run: |
+          mapfile -t PKGS < <(git ls-files '*package.json' | grep -v node_modules || true)
+          for p in "${PKGS[@]}"; do
+            echo "Validating $p"
+            python3 -m json.tool "$p" > /dev/null
+          done
+
+      - name: Install + build examples without the unpublished dep
+        # NOTE: the `langchain-js` example depends on `sentinel-oversight`, an
+        # npm package that is not yet published. Running `npm ci`/`npm install`
+        # there would 404. So we only install examples whose package.json does
+        # NOT reference `sentinel-oversight`. The `webhooks-receiver` example
+        # has zero dependencies and is safe to install.
+        run: |
+          mapfile -t PKGS < <(git ls-files '*package.json' | grep -v node_modules || true)
+          for p in "${PKGS[@]}"; do
+            dir=$(dirname "$p")
+            if grep -q 'sentinel-oversight' "$p"; then
+              echo "Skipping npm install for $dir (depends on unpublished sentinel-oversight)"
+              continue
+            fi
+            echo "::group::npm install $dir"
+            ( cd "$dir" && \
+              if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi && \
+              if npm run | grep -qE '^  build'; then npm run build; fi && \
+              if npm run | grep -qE '^  lint'; then npm run lint; fi )
+            echo "::endgroup::"
+          done
+
+  shell:
+    name: Shell scripts (bash -n)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax-check every shell script
+        run: |
+          mapfile -t SHFILES < <(git ls-files '*.sh')
+          if [ "${#SHFILES[@]}" -eq 0 ]; then
+            echo "No shell scripts found."
+            exit 0
+          fi
+          for f in "${SHFILES[@]}"; do
+            echo "bash -n $f"
+            bash -n "$f"
+          done
+
+  secret-scan:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history so gitleaks can scan every commit
+      - name: Run gitleaks
+        # Uses the gitleaks binary (not the marketplace action) with the
+        # repo's root .gitleaks.toml (extends the default ruleset). This is
+        # what would have caught the PII email that was removed in #2.
+        run: |
+          VERSION=8.21.2
+          curl -sSL -o /tmp/gitleaks.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz"
+          tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
+          chmod +x /tmp/gitleaks
+          /tmp/gitleaks version
+          /tmp/gitleaks git . --redact --no-banner --config .gitleaks.toml
